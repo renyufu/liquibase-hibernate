@@ -29,10 +29,22 @@ public class ChangedColumnChangeGenerator extends liquibase.diff.output.changelo
     @Override
     protected void handleTypeDifferences(Column column, ObjectDifferences differences, DiffOutputControl control, List<Change> changes, Database referenceDatabase, Database comparisonDatabase) {
         if (referenceDatabase instanceof HibernateDatabase || comparisonDatabase instanceof HibernateDatabase) {
-            // do nothing, types tend to not match with hibernate
-        } else {
-            super.handleTypeDifferences(column, differences, control, changes, referenceDatabase, comparisonDatabase);
+            // types tend to not match with hibernate, so we need do something...
+            Difference typeDifference = differences.getDifference("type");
+            if (typeDifference != null) {
+                DataType referenceType = (DataType) typeDifference.getReferenceValue();
+                DataType comparedType = (DataType) typeDifference.getComparedValue();
+                String referenceTypeName = referenceType.getTypeName();
+                String comparedTypeName = comparedType.getTypeName();
+                if ((referenceTypeName.equalsIgnoreCase("varchar") && comparedTypeName.equalsIgnoreCase("varchar")
+                        && referenceType.getColumnSize().equals(comparedType.getColumnSize()))
+                    || (referenceTypeName.equalsIgnoreCase("bigint") && comparedTypeName.equalsIgnoreCase("bigint"))
+                ) {
+                    return;
+                }
+            }
         }
+        super.handleTypeDifferences(column, differences, control, changes, referenceDatabase, comparisonDatabase);
     }
 
     @Override
@@ -47,6 +59,6 @@ public class ChangedColumnChangeGenerator extends liquibase.diff.output.changelo
             }
             // do nothing, types tend to not match with hibernate
         }
-            super.handleDefaultValueDifferences(column, differences, control, changes, referenceDatabase, comparisonDatabase);
+        super.handleDefaultValueDifferences(column, differences, control, changes, referenceDatabase, comparisonDatabase);
     }
 }
